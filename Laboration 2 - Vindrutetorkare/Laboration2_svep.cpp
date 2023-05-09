@@ -8,7 +8,7 @@ void svep(int speed) {
     servo.period(0.020);
     float start = 0.0009;
     float slut = 0.0021;
-    int cycles = 10;
+    int cycles = 10; //Styr "upplösningen"
     float cycle_time = (slut-start)/cycles;
 
         for (float i = start; i < slut; i += cycle_time) {
