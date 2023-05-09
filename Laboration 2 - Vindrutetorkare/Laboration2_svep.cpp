@@ -3,6 +3,9 @@
 PwmOut servo(p5);
 //Thread servo_thread;
 
+PwmOut led(p5);
+AnalogOut pot(p15);
+
 void svep(int speed) {
     //Om speed = 100 kommer rörelse ett håll ta 1sekund
     servo.period(0.020);
@@ -28,8 +31,14 @@ void svep(int speed) {
 int main() {
     while(1) {
         //servo_thread.start(svep(100));
-        svep(100);
-        printf("Cycle done\n");
-        wait(5);
+        //svep(100);
+        //printf("Cycle done\n");
+        float speed = 50 + (50/pot.read());         
+        if (pot.read() < 0.1) {
+            speed = 500; 
+        }
+        printf("Speed: %.3f\n", speed);
+        
+        wait(0.2);
     }
 }
