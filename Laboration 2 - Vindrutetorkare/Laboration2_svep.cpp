@@ -4,7 +4,7 @@ PwmOut servo(p5);
 //Thread servo_thread;
 
 void svep(int speed) {
-    //Om speed = 10 kommer rörelse ett håll ta 1sekund
+    //Om speed = 100 kommer rörelse ett håll ta 1sekund
     servo.period(0.020);
     float start = 0.0009;
     float slut = 0.0021;
