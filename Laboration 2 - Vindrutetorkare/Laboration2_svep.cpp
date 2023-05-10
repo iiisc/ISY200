@@ -65,6 +65,6 @@ int main() {
             svep();
         }
         
-        wait(0.2);
+        wait(0.05);
     }
 }
