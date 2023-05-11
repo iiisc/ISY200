@@ -19,8 +19,7 @@ int checkSpeed(){
     return 1000-(700*pot.read());
 }
 
-void checkState(){
-   
+void checkState(){  
   switch(joystick) {
     case 0x1: 
         wiperQuick = true; red = 0.95;
@@ -52,21 +51,21 @@ void svep(int speed) {
     //Om speed = 100 kommer rörelse ett håll ta 1sekund
     float start = 0.0009;
     float slut = 0.0021;
-    int cycles = 100;
+    int cycles = 1000;
     float cycle_time = (slut-start)/cycles;
     
         for (float i = start; i < slut; i += cycle_time) {
             //Hundra varv i denna loop tar vår servo från min > max
             servo.pulsewidth(i);
             checkState();
-            ThisThread::sleep_for(chrono::milliseconds(speed/10));
+            ThisThread::sleep_for(chrono::milliseconds(speed/100));
 
         }
         for (float i = slut; i > start; i -= cycle_time) {
             //Hundra varv i denna loop tar vår servo från max > min
             servo.pulsewidth(i);
             checkState();
-            ThisThread::sleep_for(chrono::milliseconds(speed/10));
+            ThisThread::sleep_for(chrono::milliseconds(speed/100));
         }
 }
 
