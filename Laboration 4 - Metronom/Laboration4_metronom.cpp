@@ -15,7 +15,7 @@ float BPM = 20; //Startar med 20BPM
 void tick() {
     //printf("Ticker fired, Time between ticks: %.2f. BPM: %.2f \n", 60/BPM, BPM);
     led1 = !led1;
-    //Startar speaker med 500Hz och volym 0.35. startar även en timeout som ska stänga av ljudet via quiet();
+    //Startar speaker med 500Hz och volym 0.5. startar även en timeout som ska stänga av ljudet via quiet();
     speaker.period(1/500);
     speaker = 0.5
     sound_duration.attach(&quiet, 0.1)
