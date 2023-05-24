@@ -28,7 +28,7 @@ void quiet(){
 void update_LCD(){
     lcd.cls();
     lcd.locate(0,3);
-    lcd.prinf("Metronom. BPM: %d", BPM);
+    lcd.printf("Metronom. BPM: %d", BPM);
 }
 
 void increase_speed() {
@@ -49,7 +49,9 @@ void decrease_speed() {
 int main() {
 
     bpm_ticker.attach(&tick, BPM);
-    btn.fall(&increase_speed);
+    btnUp.fall(&increase_speed);
+    btnDown.fall(&decrease_speed);
+
 
     ThisThread::sleep_for(chrono::milliseconds(50));
 }
