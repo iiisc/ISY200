@@ -16,8 +16,13 @@ int main() {
     switch_word=0x01; //Skickar en etta
 
     while (1){
+<<<<<<< Updated upstream
         ser_port.write(switch_word); //Skicka switch_word
         switch_word = pot.read()*100; //Uppdatera switch_word till ett värde mellan 0 och 100. 
         ThisThread::sleep_for(chrono::milliseconds(50));
+=======
+        switch_word = ser_port.write(switch_word); //send switch_word and update switch_word with recieved value
+        ThisThread::sleep_for(chrono::milliseconds(checkSpeed()));
+>>>>>>> Stashed changes
     }
 }
