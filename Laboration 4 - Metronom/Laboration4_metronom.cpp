@@ -48,13 +48,11 @@ void decrease_speed() {
 
 int main() {
 
-    while(1){
-
     bpm_ticker.attach(&tick, BPM);
     btnUp.fall(&increase_speed);
     btnDown.fall(&decrease_speed);
 
-
+    while(1) {
     ThisThread::sleep_for(chrono::milliseconds(50));
  }
 }
