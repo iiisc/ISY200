@@ -1,67 +1,84 @@
 #include "mbed.h"
-#include "C12832.h"
+#include "C12832A1Z.h"
+#include <chrono>
 
 DigitalOut led1(LED1);
+DigitalOut led2(LED2);
+DigitalOut led3(LED3);
+DigitalOut led4(LED4);
+AnalogIn pot(p19);
+
 InterruptIn btnUp(p15);
 InterruptIn btnDown(p12);
-C12832 lcd(p5, p7, p6, p8, p11);
+C12832A1Z lcd(p5, p7, p6, p8, p11); // MOSI, SCK, Reset, A0, CS
 PwmOut speaker(p26);
 
 Ticker bpm_ticker;
 Timeout sound_duration;
-Timeout update_LCD_timeout;
+Timeout LCD_ticker;
 Timer debounce;
 
 int BPM = 20; //Startar med 20BPM
 
 void quiet(){
+    led1=0;
     speaker = 0.0;
 }
 
 void tick() {
     //printf("Ticker fired, Time between ticks: %.2f. BPM: %.2f \n", 60/BPM, BPM);
-    led1 = !led1;
+    led1 = 1;
     //Startar speaker med 500Hz och volym 0.5. startar även en timeout som ska stänga av ljudet via quiet();
-    speaker.period(1.0/500);
     speaker = 0.5;
-    sound_duration.attach(&quiet, 0.1);
+    sound_duration.attach(&quiet, chrono::milliseconds(100));
 }
 
 void update_LCD(){
-    lcd.cls();
-    lcd.locate(0,3);
-    lcd.printf("Metronom. BPM: %d", BPM);
+    led4 = !led4;
+    lcd.locate(1,0);
+    lcd.printf("%d", BPM);
 }
 
 void increase_speed() {
     if (debounce.read_ms() > 100) {
     BPM += 4;
-    bpm_ticker.detach();
-    bpm_ticker.attach(&tick, 60/BPM);
-    update_LCD_timeout.attach(&update_LCD, 0.2);
+    led3 = !led3;
+    bpm_ticker.attach(&tick, chrono::milliseconds(60000/BPM));
     debounce.reset();
+    //LCD_ticker.attach(&update_LCD, chrono::milliseconds(200));
     }
 }
 
 void decrease_speed() {
-    if (debounce.read_ms() > 100) {
+    if (debounce.read_ms() > 100 && BPM > 4) {
     BPM -= 4;
-    bpm_ticker.detach();
-    bpm_ticker.attach(&tick, 60/BPM);
-    update_LCD_timeout.attach(&update_LCD, 0.2);
+    led2 = !led2;
+    bpm_ticker.attach(&tick, chrono::milliseconds(60000/BPM));
     debounce.reset();
+  
     }
+    //LCD_ticker.attach(&update_LCD, chrono::milliseconds(200));
 }
 
 
-int main() {
 
+int main() {
+  
+
+    speaker.period(1.0/500);
     debounce.start();
-    bpm_ticker.attach(&tick, BPM);
+
+    //LCD_ticker.attach(&update_LCD, chrono::milliseconds(500));
+    bpm_ticker.attach(&tick, chrono::milliseconds(BPM*100));
     btnUp.fall(&increase_speed);
     btnDown.fall(&decrease_speed);
 
+    //lcd.printf("Metronom: %d", BPM);
+
     while(1) {
-    ThisThread::sleep_for(chrono::milliseconds(50));
+    lcd.update();
+    lcd.locate(0,3);
+    lcd.printf("Metronom: %d", BPM);
+    ThisThread::sleep_for(chrono::milliseconds(100));
     }
 }
