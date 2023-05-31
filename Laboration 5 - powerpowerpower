@@ -1,0 +1,219 @@
+// power_mbed.cpp
+//
+// Halvfärdigt program för strömmätningar. För mbed 2, EJ mbed os 5.
+//
+// Thomas Lundqvist 2020-2023, use freely!
+
+#include "mbed.h"
+
+using namespace std;
+
+// PowerControl ger möjlighet att stänga av saker och starta sleep-läget
+// i processorn enkelt.
+// https://os.mbed.com/users/JST2011/code/PowerControl/
+// T ex, ethernetgränssnittet:
+//         PHY_PowerDown();
+// T ex, sleep:
+//         Sleep();
+//
+// Maybe build error on line 9 in PowerControl.h
+// Fix: remove this line:
+//      #include "TARGET_LPC1768/LPC17xx.h"
+
+#include "PowerControl/PowerControl.h"
+#include "PowerControl/EthernetPowerControl.h"
+
+Serial pc(USBTX, USBRX);
+DigitalOut led1(LED1), led2(LED2), led3(LED3), led4(LED4);
+
+// Knappingång. InterruptIn fungerar samma som DigitalIn men
+// ger också möjlighet att lägga till interrupt för test 2, 3 och 4.
+InterruptIn but(p21);
+
+void led_on_2sec(DigitalOut &led);
+void set_clock(int speed_MHz);
+void info_clock();
+
+void power_1_high();
+void power_2_sleep();
+void power_3_ethoff();
+void power_4_clock();
+
+Ticker lampTick;
+Timer debounce;
+Timeout lampTimeout;
+
+void close_lamp2() {
+    led2 = 0;
+}
+void toggle_lamp2() {
+    led2 = 1;
+    lampTimeout.attach(&close_lamp2, 0.0002);
+}
+
+void close_lamp3(){
+    led3 = 0;
+}
+void toggle_lamp3() {
+    led3 = 1;
+    lampTimeout.attach(&close_lamp3, 0.0002);
+}
+
+void close_lamp4(){
+    led4 = 0;
+}
+void toggle_lamp4() {
+    led4 = 1;
+    lampTimeout.attach(&close_lamp4, 0.0002);
+}
+
+int main() {
+    but.mode(PullDown);
+    
+    // Knapptryckning går vidare till nästa test.
+    power_1_high();
+    power_2_sleep();
+    power_3_ethoff();
+    power_4_clock();
+    
+    printf("Test fardiga. Evig loop.\n");
+    while(1)
+        ;
+}
+
+// Strömslukande första test.
+// wait() gör busy wait som kör processorn hela tiden.
+
+
+void power_1_high()
+{
+    printf("Start test 1 high power\n");
+    DigitalOut &led = led1;    // Första testet, led1
+    led_on_2sec(led);
+    
+    // Stanna i funktionen så länge knappen inte trycks ner
+    while(but == 0) {
+        led = 1;
+        wait_us(200);   // Kort blink, borde inte påverka strömmen
+        led = 0;
+        // Vänta i 2 sek, kolla knappen samtidigt
+        for (int i = 0 ; i < 20 && but == 0 ; i++)
+            wait_us(100000);
+
+    }
+}
+
+// Samma som power_1_high men gör om till Sleep() istället.
+// Använd interrupt och ticker för knappar och blink.
+
+void power_2_sleep()
+{
+    printf("Start test 2 sleep\n");
+    DigitalOut &led = led2;    // Andra testet, led2
+    led_on_2sec(led);
+    lampTick.attach(&toggle_lamp2, 1);
+
+    // Stanna i funktionen så länge knappen inte trycks ner
+    while(but == 0) {
+        Sleep();
+    }
+}
+
+// Samma som power_2_sleep men stäng även av ethernetgränssnittet
+
+void power_3_ethoff()
+{
+    printf("Start test 2 sleep\n");
+    DigitalOut &led = led3;
+    led_on_2sec(led);
+    lampTick.attach(&toggle_lamp3, 1);
+    PHY_PowerDown();
+
+    // Stanna i funktionen så länge knappen inte trycks ner
+    while(but == 0) {
+        Sleep();
+    }
+}
+
+// Samma som power_3_ethoff men sänk även klockfrekvensen på systemet
+// Hur lågt kan man sänka? 12 MHz kanske är lagom?
+
+void power_4_clock()
+{
+    printf("Start test 4 sleep\n");
+    DigitalOut &led = led4;
+    led_on_2sec(led);
+    lampTick.attach(&toggle_lamp4, 1);
+    
+    set_clock(12);
+    PHY_PowerDown();
+
+
+    // Stanna i funktionen så länge knappen inte trycks ner
+    while(but == 0) {
+        Sleep();
+    }
+}
+
+///////////////////////////////////////////////////////////////////
+// Hälpfunktioner
+///////////////////////////////////////////////////////////////////
+
+// Indikera start av ny mätning med 2 sekunder lysande led
+
+void led_on_2sec(DigitalOut &led)
+{
+    led = 1;
+    wait(2.0);
+    led = 0;
+}
+
+// Sätt ny klockfrekvens. Normalt 96 MHz.
+// speed_MHz avrundas uppåt till något som (jämnt) delar 288.
+
+void set_clock(int speed_MHz)
+{
+    // Frekvensen bestäms av config-värdet:
+    // freq =  288 Mhz / (cfg_value + 1)
+    // 11 gives 288/12 = 24 MHz
+    // original value: 2 gives 96 Mhz
+  
+    // Tvärtom här, beräkna config-värdet från frekvensen
+    int cfg_value = 288/speed_MHz - 1;
+    LPC_SC->CCLKCFG = cfg_value;
+    SystemCoreClockUpdate();        // Make sure wait() works as before
+    
+    // Serial port baudrate will now probably be wrong! Reset baud rate:
+    //pc.baud(9600);
+    
+    printf("Clock is now: %d Hz\n", SystemCoreClock);
+}
+
+// Skriv ut info om klockinställningarna för felsökning.
+
+void info_clock()
+{
+    // From: https://os.mbed.com/users/simon/code/PLL//file/7ebf892f4561/main.cpp/
+    int Fin = 12000000; // 12MHz XTAL
+    
+    printf("PLL Registers:\n");
+    printf(" - PLL0CFG = 0x%08X\n", LPC_SC->PLL0CFG);
+    printf(" - CLKCFG  = 0x%08X\n", LPC_SC->CCLKCFG);
+    
+    int M = (LPC_SC->PLL0CFG & 0xFFFF) + 1;
+    int N = (LPC_SC->PLL0CFG >> 16) + 1;
+    int CCLKDIV = LPC_SC->CCLKCFG + 1;
+ 
+    printf("Clock Variables:\n");
+    printf(" - Fin = %d\n", Fin);
+    printf(" - M   = %d\n", M);
+    printf(" - N   = %d\n", N);
+    printf(" - CCLKDIV = %d\n", CCLKDIV);
+ 
+    int Fcco = (2 * M * 12000000) / N;
+    int CCLK = Fcco / CCLKDIV;
+ 
+    printf("Clock Results:\n");    
+    printf(" - Fcco = %d\n", Fcco);
+    printf(" - CCLK = %d\n", CCLK);
+}
